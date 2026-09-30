@@ -1,0 +1,65 @@
+services:
+
+  database:
+    image: mysql:8.0
+    container_name: task-manager-db
+
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: taskmanager
+      MYSQL_USER: taskuser
+      MYSQL_PASSWORD: taskpassword
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-prootpassword"
+        ]
+
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+
+    container_name: task-manager-backend
+
+    environment:
+      DB_HOST: database
+      DB_USER: taskuser
+      DB_PASSWORD: taskpassword
+      DB_NAME: taskmanager
+
+    depends_on:
+      database:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+
+      dockerfile: frontend/Dockerfile
+
+    container_name: task-manager-frontend
+
+    ports:
+      - "8080:80"
+
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
